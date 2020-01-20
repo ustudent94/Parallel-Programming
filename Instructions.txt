@@ -1,0 +1,7 @@
+cd "/mnt/c/Users/Cory/Documents/School/Spring 2020/Parrallel Programming"
+
+mpic++ <file> to compile
+mpirun -np 8 ./a.out to run
+
+list parameters
+
