@@ -73,11 +73,11 @@ int main(int argc, char **argv){
         mask = 1;
         mask <<= i + 1;
         desc = rank & mask;
-        cout << "Mask 1 " << mask << " " << rank << " " << i << " " << desc << endl;
+        //cout << "Mask 1 " << mask << " " << rank << " " << i << " " << desc << endl;
         for(int j = i; j >= 0; j--){
             mask = 1;
             mask <<= j;
-            cout << "Mask 2 " << mask << " " << j << endl;
+            //cout << "Mask 2 " << mask << " " << rank << " " << j << " " << zero << endl;
             zero = rank & mask;
             //cout << i << " " <<  j << " " <<zero << " " << desc << endl;
 
@@ -89,7 +89,7 @@ int main(int argc, char **argv){
             process = cube(j,rank);
             //debug
             //if((rank == 4 || rank == 5) && i == 0 && j == 0){
-                //cout << i << " " <<  j << " " <<  rank << " " << process << " " << zero << " " << desc <<  endl;
+                cout << i << " " <<  j << " " <<  rank << " " << process << " " << zero << " " << desc <<  endl;
             //}
             if(zero && !desc){
                 myNum = data;
