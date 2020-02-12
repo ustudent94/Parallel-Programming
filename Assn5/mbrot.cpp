@@ -57,8 +57,8 @@ int mbrotIters(Complex c, int maxIters){
 
 int main(int argc, char **argv){
 
-    int rank, size, tag;
-    //int data[64];
+    int rank, size, tag, count, source;
+    int data;
     MPI_Status mystatus;
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MCW, &rank);
@@ -96,43 +96,55 @@ int main(int argc, char **argv){
         fout << "P3" << endl;
         fout << DIM << " " << DIM << endl;
         fout << 255 << endl;
-        for (int j = 0; j < size; ++j) {
+        for (int j = 0; j < size-1; ++j) {
             for (int i = 0; i < DIM; ++i) {
                 c.r = (i * (c1.r - c2.r) / DIM) + c2.r;
                 c.i = (j * (c1.i - c2.i) / DIM) + c2.i;
                 row[i] = c;
             }
-            MPI_Send(row,DIM,MPI_INT,0,j,MCW);
+            //cout << "Sending to process " << j+1 << endl;
+            MPI_Send(row,DIM,MPI_INT,j+1,j,MCW);
+            //sleep(1);
         }
 
-        for (int j = size +1; j < DIM; ++j) {
+        //Send to whatever is available
+        for (int j = size; j < DIM; ++j) {
             for (int i = 0; i < DIM; ++i) {
                 c.r = (i * (c1.r - c2.r) / DIM) + c2.r;
                 c.i = (j * (c1.i - c2.i) / DIM) + c2.i;
                 row[i] = c;
             }
             //recieve row of iters into finalItes[tag]
-            MPI_Probe(MPI_ANY_SOURCE,0,MCW,&mystatus);
+            MPI_Probe(MPI_ANY_SOURCE,MPI_ANY_TAG,MCW,&mystatus);
             tag = mystatus.MPI_TAG;
-            MPI_Recv(iters,DIM,MPI_INT,MPI_ANY_SOURCE,0,MCW,&mystatus);
-            
+            source = mystatus.MPI_SOURCE;
+            MPI_Recv(iters,DIM,MPI_INT,MPI_ANY_SOURCE,MPI_ANY_TAG,MCW,&mystatus);
+            cout << rank << " recieved row " << tag <<" of iters from " << source << endl;
             for(int k = 0; k < DIM; ++k) {
                 finalIters[tag][k] = iters[k];
             }
             //send row of complex numbers
-            MPI_Send(row,DIM,MPI_INT,0,j,MCW);
+            MPI_Send(row,DIM,MPI_INT,source,j,MCW);
+            cout << "Sending to process " << source << endl;
         }
 
+        //kill processes
+        sleep(1);
+        data = -1;
+        for(int i = 0; i < size; ++i){
+            MPI_Send(&data,1,MPI_INT,i,DIM,MCW);
+        }
 
-
-
+        cout << "Process " << rank << " has killed the rest of the processes" << endl;
         //output file
         for(int j = 0; j <DIM; ++j) {
             for (int i = 0; i < DIM; ++i) {
+                cout << finalIters[j][i] << " ";
                 fout << rcolor(finalIters[j][i]) << " ";
                 fout << gcolor(finalIters[j][i]) << " ";
                 fout << bcolor(finalIters[j][i]) << " ";
             }
+            cout << endl;
             fout << endl;
         }
         fout.close();
@@ -140,15 +152,29 @@ int main(int argc, char **argv){
 
     //other processes
     else{
-        //int iters;
-        MPI_Probe(MPI_ANY_SOURCE,0,MCW,&mystatus);
-        tag = mystatus.MPI_TAG;
-        MPI_Recv(row,DIM,MPI_INT,MPI_ANY_SOURCE,0,MCW,&mystatus);
-        for(int i = 0; i < DIM; ++i){
-            iters[i] = mbrotIters(row[i],255);
-        }
 
-        //MPI_Send(iters,DIM,MPI_INT,0,tag,MCW);
+        while(1) {
+            MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MCW, &mystatus);
+            tag = mystatus.MPI_TAG;
+            MPI_Get_count(&mystatus,MPI_INT,&count);
+            //cout << rank << " got count " << endl;
+            if(count == 1){
+                cout << "Process " << rank << " has died" << endl;
+                break;
+                //MPI_Recv(data, 1, MPI_INT, MPI_ANY_SOURCE, 0, MCW, &mystatus);
+            }else {
+                MPI_Recv(row, DIM, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MCW, &mystatus);
+                //cout << rank << " recieved row " << tag << endl;
+                for (int i = 0; i < DIM; ++i) {
+                    iters[i] = mbrotIters(row[i], 255);
+                }
+                //cout << "Process " << rank << " SENDING iters back to 0" << endl;
+                //sleep(rank);
+                MPI_Send(iters, DIM, MPI_INT, 0, tag, MCW);
+                cout << "Process " << rank << " sent iters back to 0" << endl;
+
+            }
+        }
     }
 
     MPI_Finalize();
