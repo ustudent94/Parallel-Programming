@@ -60,8 +60,8 @@ int main(int argc, char **argv){
 
     c1.r=0.5;
     c1.i=0.39;
-    c2.r= 2;
-    c2.i= 2;
+    c2.r= -2;
+    c2.i= -2;
 
     c3=c1+c2;
     cout << c3.r << " + " << c3.i <<"i"<<endl;
@@ -69,22 +69,25 @@ int main(int argc, char **argv){
     c3=c1*c2;
     cout << c3.r << " + " << c3.i <<"i"<<endl;
 
-    int DIM = 500;
+    int DIM = 10;
     fout<<"P3"<<endl;
     fout<<DIM<<" "<<DIM<<endl;
     fout<<255<<endl;
 
     for(int j=0;j<DIM;++j){
+        cout << " " << j << ": ";
         for(int i=0;i<DIM;++i){
             c.r = (i*(c1.r-c2.r)/DIM)+c2.r;
             c.i = (j*(c1.i-c2.i)/DIM)+c2.i;
-
-            int iters = mbrotIters(c1,255);
+            int iters = mbrotIters(c,255);
+            //cout << c.r << ","<<c.i << " ";
+            cout << iters << " ";
             fout << rcolor(iters)<<" ";
             fout << gcolor(iters)<<" ";
             fout << bcolor(iters)<<" ";
 
         }
+        cout << endl;
         fout << endl;
     }
     
