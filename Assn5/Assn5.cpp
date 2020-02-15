@@ -69,7 +69,8 @@ int main(int argc, char **argv){
 
     Complex c;
     const int DIM = 512;
-    Complex row[DIM];
+    //Complex row[DIM];
+    int row;
     int iters[DIM];
     int finalIters[DIM][DIM];
     Complex c1, c2;
@@ -94,39 +95,31 @@ int main(int argc, char **argv){
 
         auto start = std::chrono::system_clock::now();
         for (int j = 0; j < size-1; ++j) {
-            MPI_Send(&c,1,MPI_INT,j+1,j,MCW);
+            MPI_Send(&j,1,MPI_INT,j+1,j,MCW);
         }
 
         //Send to whatever is available
-        for (int j = size; j < DIM; ++j) {
+        for (int j = size-1; j < DIM; ++j) {
             //recieve row of iters into finalIters[tag]
-            MPI_Probe(MPI_ANY_SOURCE,MPI_ANY_TAG,MCW,&mystatus);
+            MPI_Recv(iters,DIM,MPI_INT,MPI_ANY_SOURCE,MPI_ANY_TAG,MCW,&mystatus);
             tag = mystatus.MPI_TAG;
             source = mystatus.MPI_SOURCE;
-            MPI_Recv(iters,DIM,MPI_INT,MPI_ANY_SOURCE,MPI_ANY_TAG,MCW,&mystatus);
-            cout << tag <<":";
+            //cout << "Recieved row " << tag << " from " << source << endl;
             for(int k = 0; k < DIM; ++k) {
                 finalIters[tag][k] = iters[k];
-                //cout << finalIters[tag][i] << " ";
-                cout << iters[k] << " ";
             }
-            cout << endl;
             //send row of complex numbers
-            MPI_Send(&c,1,MPI_INT,source,j,MCW);
+            MPI_Send(&j,1,MPI_INT,source,j,MCW);
         }
         for(int i = 1; i < size; ++i){
             //recieve row of iters into finalIters[tag]
-            MPI_Probe(MPI_ANY_SOURCE,MPI_ANY_TAG,MCW,&mystatus);
+            MPI_Recv(iters,DIM,MPI_INT,MPI_ANY_SOURCE,MPI_ANY_TAG,MCW,&mystatus);
             tag = mystatus.MPI_TAG;
             source = mystatus.MPI_SOURCE;
-            MPI_Recv(iters,DIM,MPI_INT,MPI_ANY_SOURCE,MPI_ANY_TAG,MCW,&mystatus);
-            cout << tag <<":";
+            //cout << "Recieved row " << tag << " from " << source << endl;
             for(int k = 0; k < DIM; ++k) {
                 finalIters[tag][k] = iters[k];
-                //cout << finalIters[tag][i] << " ";
-                cout << iters[k] << " ";
             }
-            cout << endl;
         }
         //kill processes
         sleep(1);
@@ -145,14 +138,11 @@ int main(int argc, char **argv){
 
         //output file
         for(int j = 0; j <DIM; ++j) {
-            //cout << j << ": ";
             for (int i = 0; i < DIM; ++i) {
-                //cout << finalIters[j][i] << " ";
                 fout << rcolor(finalIters[j][i]) << " ";
                 fout << gcolor(finalIters[j][i]) << " ";
                 fout << bcolor(finalIters[j][i]) << " ";
             }
-            //cout << endl;
             fout << endl;
         }
         fout.close();
@@ -172,18 +162,13 @@ int main(int argc, char **argv){
                 break;
                 //MPI_Recv(data, 1, MPI_INT, MPI_ANY_SOURCE, 0, MCW, &mystatus);
             }else {
-                MPI_Recv(&c, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MCW, &mystatus);
-                //cout << tag << ": ";
+                MPI_Recv(&row, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MCW, &mystatus);
                 for (int i = 0; i < DIM; ++i) {
                     c.r = (i * (c1.r - c2.r) / DIM) + c2.r;
-                    c.i = (tag * (c1.i - c2.i) / DIM) + c2.i;
+                    c.i = (row * (c1.i - c2.i) / DIM) + c2.i;
                     iters[i] = mbrotIters(c, 255);
-                    //cout << tag < " " << i << " " << iters[i] << endl;
-                    //cout << iters[i] << " ";
-                    //cout << c.r << ","<<c.i << " ";
                 }
-                //cout << endl;
-                MPI_Send(iters, DIM, MPI_INT, 0, tag, MCW);
+                MPI_Send(iters, DIM, MPI_INT, 0, row, MCW);
             }
         }
     }
