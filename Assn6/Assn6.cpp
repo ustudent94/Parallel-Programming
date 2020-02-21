@@ -152,10 +152,13 @@ int main(int argc, char **argv) {
     ///master
     //master is last process for easy mod operation
     if (rank == size -1) {
+
+
         ///Initial state
         int board[numRows][numCols];
         int seed;
         for(int i = 0; i < numRows; i++){
+            clearRow(tempRow);
             for(int j = 0; j < numCols; j++){
                 //todo: uncomment when finished debugging
 //                seed = i*j;
@@ -165,9 +168,13 @@ int main(int argc, char **argv) {
 //                    board[i][j] = 0;
 //                }
                 tempRow[j] = board[i][j];
+                //cout << tempRow[j] << " ";
             }
+            //cout << endl;
+
             process = i%(size-1);
             MPI_Send(tempRow,numCols,MPI_INT,process,i,MCW);
+            //cout <<rank << " " << i << endl;
         }
         //finalize reception by changing tag
         //MPI_Send(tempRow,numCols,MPI_INT,process,size +1,MCW);
@@ -183,6 +190,7 @@ int main(int argc, char **argv) {
             for(int i = 0; i < numRows; i++) {
                 MPI_Recv(tempRow,numCols,MPI_INT,MPI_ANY_SOURCE,MPI_ANY_TAG,MCW,&mystatus);
                 tag = mystatus.MPI_TAG;
+                cout <<rank << " " << tag << endl;
                 //put into the appropriate row
                 for(int j = 0; j < numCols; j++ ){
                     board[tag][j] = tempRow[j];
@@ -199,14 +207,18 @@ int main(int argc, char **argv) {
 
     ///slave
     else {
-
-        const int numParts = numRows/(size-1) + (numRows%(size-1))/rank;
+//        cout << rank << " 1 " << numRows/(size-1) << endl;
+//        cout << rank << " 2 " <<(rank/(numRows%(size-1)))*-1 + 1 <<endl;
+        const int numParts = numRows/(size-1) + (rank/(numRows%(size-1)))*-1 + 1;
+        //cout << rank << " " << numParts << endl;
         int parts[numParts][numCols];
         int rowList[numParts];
 
         //recieve in rows to be in charge of
-        for(int i = 0; i < count; i++){
+        for(int i = 0; i < numParts; i++){
             MPI_Recv(tempRow,numCols,MPI_INT,MPI_ANY_SOURCE,MPI_ANY_TAG,MCW,&mystatus);
+            //cout <<rank << " " << i << " " << endl;
+
             tag = mystatus.MPI_TAG;
             rowList[i] = tag;
             for(int j= 0; j < numCols; j++){
@@ -224,33 +236,44 @@ int main(int argc, char **argv) {
                         tempBoard[k][j] = 0;
                     }
                 }
-
                 //send current row to above tag 1
                 process = rank -1;
                 if(process < 0) {
                     process = size - 2;
                 }
+
                 if(rowList[i] != 0) {
-                    MPI_Send(tempRow, numCols, MPI_INT, process, 1, MCW);
+                    MPI_Send(tempRow, numCols, MPI_INT, process, rowList[i], MCW);
+                    cout << rank << " sending " << rowList[i] << " to " << process << endl;
                 }
 
                 //recieve row from below tag 1
+                process = (rank + 1) % (size -1);
                 if(rowList[i] != numRows-1) {
-                    MPI_Recv(tempRow,numCols,MPI_INT,MPI_ANY_SOURCE,1,MCW,&mystatus);
+                    cout << rank << " receiving " << rowList[i]+1 << " from " << process << endl;
+
+                    MPI_Recv(tempRow,numCols,MPI_INT,process,rowList[i]+1 ,MCW,&mystatus);
+                    tag = mystatus.MPI_TAG;
+                    cout << rank << " received " << tag << " from " << process << endl;
+                    //cout << rank <<  " Made it here" << endl;
                     for (int col = 0; col < numCols; col++) {
                         tempBoard[i + 1][col] = tempRow[col];
                     }
                 }
 
-                process = (rank + 1) % (size -1);
+
                 //send current row to below tag 2
                 if(rowList[i] != numRows-1) {
                     MPI_Send(tempRow, numCols, MPI_INT, process, 2, MCW);
                 }
 
                 //recieve row from above tag 2
+                process = rank -1;
+                if(process < 0) {
+                    process = size - 2;
+                }
                 if(rowList[i] != 0) {
-                    MPI_Recv(tempRow,numCols,MPI_INT,MPI_ANY_SOURCE,2,MCW,&mystatus);
+                    MPI_Recv(tempRow,numCols,MPI_INT,process,2,MCW,&mystatus);
                     for (int col = 0; col < numCols; col++) {
                         tempBoard[i - 1][col] = tempRow[col];
                     }
