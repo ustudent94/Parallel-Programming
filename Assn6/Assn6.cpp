@@ -106,6 +106,13 @@ void clearTempBoard(int **board){
 }
 
 int main(int argc, char **argv) {
+
+    int rank, size, tag, source, process;
+    MPI_Status mystatus;
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MCW, &rank);
+    MPI_Comm_size(MCW, &size);
+
     ///glider gun test
     int board[numRows][numCols] = {
             {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -140,11 +147,7 @@ int main(int argc, char **argv) {
             {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
     };
 
-    int rank, size, tag, source, process;
-    MPI_Status mystatus;
-    MPI_Init(&argc, &argv);
-    MPI_Comm_rank(MCW, &rank);
-    MPI_Comm_size(MCW, &size);
+
 
     int tempRow[numCols];
     int numIter = 20;
@@ -188,7 +191,7 @@ int main(int argc, char **argv) {
         for (int gen = 0; gen < numIter; gen++) {
             //automatically outputs board
             std::cout << "\ngeneration " << gen << ":\n";
-            //showGeneration(board);
+            showGeneration(board);
 
             //recieve all rows from processes
             for(int i = 0; i < size -1; i++) {
@@ -261,9 +264,7 @@ int main(int argc, char **argv) {
             }
         }
 
-        MPI_Comm_rank(MCW, &rank);
-        MPI_Comm_size(MCW, &size);
-        cout << rank << " Size: " << size<<endl;
+
         MPI_Barrier(MCW);
 
         //loop iterations
@@ -332,8 +333,10 @@ int main(int argc, char **argv) {
                 }
             }
             //cout << rank << " " << size-1 << endl;
-
-            cout <<rank << " Sending to  "<< (size - 1)  <<  endl;
+//            MPI_Comm_rank(MCW, &rank);
+//            MPI_Comm_size(MCW, &size);
+//            cout << rank << " Size: " << size<<endl;
+//            cout <<rank << " Sending to  "<< (size - 1)  <<  endl;
             MPI_Send(section, numSectionRows * numCols, MPI_INT, (size-1), 0, MCW);
 //            }
             //cout <<rank << "made it here" <<endl;
