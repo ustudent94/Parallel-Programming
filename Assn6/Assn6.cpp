@@ -106,6 +106,12 @@ void clearTempBoard(int **board){
 }
 
 int main(int argc, char **argv) {
+    int rank, size, tag, source, process;
+    MPI_Status mystatus;
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MCW, &rank);
+    MPI_Comm_size(MCW, &size);
+
     ///glider gun test
     int board[numRows][numCols] = {
             {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -140,11 +146,7 @@ int main(int argc, char **argv) {
             {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
     };
 
-    int rank, size, tag, source, process;
-    MPI_Status mystatus;
-    MPI_Init(&argc, &argv);
-    MPI_Comm_rank(MCW, &rank);
-    MPI_Comm_size(MCW, &size);
+
 
     int tempRow[numCols];
     int numIter = 20;
@@ -188,7 +190,7 @@ int main(int argc, char **argv) {
         for (int gen = 0; gen < numIter; gen++) {
             //automatically outputs board
             std::cout << "\ngeneration " << gen << ":\n";
-            //showGeneration(board);
+            showGeneration(board);
 
             //recieve all rows from processes
             for(int i = 0; i < size -1; i++) {
@@ -226,7 +228,6 @@ int main(int argc, char **argv) {
 
     ///slave
     else {
-
 //        cout << rank << " 1 " << numRows/(size-1) << endl;
 //        cout << rank << " 2 " <<(rank/(numRows%(size-1)))*-1 + 1 <<endl;
         //const int numParts = numRows/(size-1) + (rank/(numRows%(size-1)))*-1 + 1;
@@ -247,12 +248,12 @@ int main(int argc, char **argv) {
         int section[numSectionRows][numCols];
         int updateBoard[numUpdateRows][numCols];
         int rowList[numSectionRows];
-        //todo: something weird is happening inside for loop where rank and size are getting changed
         //recieve in rows to be in charge of
         for(int i = 0; i < numSectionRows; i++){
             //cout <<rank << " recieving " << i << " " << endl;
 
             MPI_Recv(tempRow,numCols,MPI_INT,MPI_ANY_SOURCE,MPI_ANY_TAG,MCW,&mystatus);
+//            cout << oRank << " " << rank<< " Size: " << size<< " " <<  i <<endl;
             tag = mystatus.MPI_TAG;
             //cout <<rank << " " << tag << " " << endl;
             rowList[i] = tag;
@@ -261,14 +262,13 @@ int main(int argc, char **argv) {
             }
         }
 
-        MPI_Comm_rank(MCW, &rank);
-        MPI_Comm_size(MCW, &size);
-        cout << rank << " Size: " << size<<endl;
+//        MPI_Comm_rank(MCW, &rank);
+//        MPI_Comm_size(MCW, &size);
+
         MPI_Barrier(MCW);
 
         //loop iterations
         for (int gen = 0; gen < numIter; gen++) {
-//            for(int i = 0; i < numSectionRows; i++) {
             for(int j = 0; j < numCols; j++){
                 tempRow[j] = updateBoard[0][j];
             }
@@ -301,18 +301,38 @@ int main(int argc, char **argv) {
                 MPI_Recv(tempRow,numCols,MPI_INT,source,1,MCW,&mystatus);
             }
 
+            ///Update the board
             //updateSection(updateBoard, numUpdateRows);
             int original[numUpdateRows][numCols];
             copy(&updateBoard[0][0], &updateBoard[0][0]+numRows*numCols, &original[0][0]);
 
             for (int row = 0; row < numUpdateRows; row++) {
                 for (int col = 0; col < numCols; col++) {
-                    int count = getCount(row, col, board);
+                    int count = 0;
+                    vector<int> deltas {-1, 0, 1};
+                    for (int dc : deltas) {
+                        for (int dr : deltas) {
+                            if (dr || dc) {
+                                int neighbor;
+                                if(row + dr < 0 || row +dr >= numRows || col+dc < 0 || col+dc >= numCols) {
+                                    neighbor = 0;
+                                }else{
+                                    neighbor = updateBoard[row][col];
+                                }
+                                count += neighbor;
+                                //count += getNeighbor(row + dr, col + dc, board);
+                            }
+                        }
+                    }
+//                    return count;
+//                    int count = getCount(row, col, board);
+                    //cout << rank << " " << count << " " << row << " " << col<< endl;
                     bool birth = !board[row][col] && count == 3;
                     bool survive = board[row][col] && (count == 2 || count == 3);
                     updateBoard[row][col] = birth || survive;
                 }
             }
+
 
             int startIndex = 0;
             int endIndex = numUpdateRows;
@@ -333,10 +353,8 @@ int main(int argc, char **argv) {
             }
             //cout << rank << " " << size-1 << endl;
 
-            cout <<rank << " Sending to  "<< (size - 1)  <<  endl;
+            //cout <<rank << " Sending to  "<< (size - 1)  <<  endl;
             MPI_Send(section, numSectionRows * numCols, MPI_INT, (size-1), 0, MCW);
-//            }
-            //cout <<rank << "made it here" <<endl;
             MPI_Barrier(MCW);
         }
     }
