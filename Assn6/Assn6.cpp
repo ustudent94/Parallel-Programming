@@ -149,7 +149,7 @@ int main(int argc, char **argv) {
 
 
     int tempRow[numCols];
-    int numIter = 20;
+    int numIter = 2;
 
 
     ///master
@@ -189,8 +189,8 @@ int main(int argc, char **argv) {
         //recieve each piece into ta
         for (int gen = 0; gen < numIter; gen++) {
             //automatically outputs board
-            std::cout << "\ngeneration " << gen << ":\n";
-            showGeneration(board);
+//            std::cout << "\ngeneration " << gen << ":\n";
+//            showGeneration(board);
 
             //recieve all rows from processes
             for(int i = 0; i < size -1; i++) {
@@ -219,8 +219,8 @@ int main(int argc, char **argv) {
             }
             MPI_Barrier(MCW);
         }
-        std::cout << "\ngeneration " << numIter << ":\n";
-        showGeneration(board);
+//        std::cout << "\ngeneration " << numIter << ":\n";
+//        showGeneration(board);
     }
 
 
@@ -249,6 +249,12 @@ int main(int argc, char **argv) {
         int updateBoard[numUpdateRows][numCols];
         int rowList[numSectionRows];
         //recieve in rows to be in charge of
+
+        for(int i = 0; i < numCols; i++){
+            tempRow[i]=0;
+        }
+
+        cout << "For rank " << rank<< endl;
         for(int i = 0; i < numSectionRows; i++){
             //cout <<rank << " recieving " << i << " " << endl;
 
@@ -259,7 +265,22 @@ int main(int argc, char **argv) {
             rowList[i] = tag;
             for(int j= 0; j < numCols; j++){
                 section[tag][j] = tempRow[j];
+                if(rank != 0){
+                    updateBoard[tag][j] = tempRow[j];
+                }else{
+                    updateBoard[tag+1][j] = tempRow[j];
+                }
+                //cout << updateBoard[tag][j] << " ";
+                //cout << tempRow[j];
             }
+            //cout << endl;
+        }
+        cout << rank << " for gen " << endl;
+        for(int i = 0; i < numUpdateRows; i++){
+            for(int j= 0; j < numCols; j++){
+                cout << updateBoard[i][j] << " ";
+            }
+            cout << endl;
         }
 
 //        MPI_Comm_rank(MCW, &rank);
@@ -267,14 +288,13 @@ int main(int argc, char **argv) {
 
         MPI_Barrier(MCW);
 
+
         //loop iterations
         for (int gen = 0; gen < numIter; gen++) {
-            for(int j = 0; j < numCols; j++){
-                tempRow[j] = updateBoard[0][j];
-            }
-            //send below
 
+            //send below
             if(rank >0){
+
                 process = rank -1;
                 //cout << rank << " " << process << " S1" << endl;
                 MPI_Send(tempRow, numCols, MPI_INT, process, 0, MCW);
@@ -284,11 +304,12 @@ int main(int argc, char **argv) {
                 source = rank +1;
                 //cout << rank << " " << source << " R1" << endl;
                 MPI_Recv(tempRow,numCols,MPI_INT,source,0,MCW,&mystatus);
+                for(int j = 0; j < numCols; j++){
+                    updateBoard[numSectionRows-1][j] = tempRow[j];
+                }
             }
 
-            for(int j = 0; j < numCols; j++){
-                tempRow[j] = updateBoard[numSectionRows-1][j];
-            }
+
             if(rank < size-2){
                 process = rank+1;
                 //cout << rank << " " << process << " S2" << endl;
@@ -299,50 +320,51 @@ int main(int argc, char **argv) {
                 source = rank - 1;
                 //cout << rank << " " << source << " R2" << endl;
                 MPI_Recv(tempRow,numCols,MPI_INT,source,1,MCW,&mystatus);
+                for(int j = 0; j < numCols; j++){
+                    updateBoard[0][j] = tempRow[j];
+                }
             }
 
             ///Update the board
             //updateSection(updateBoard, numUpdateRows);
-            int original[numUpdateRows][numCols];
-            copy(&updateBoard[0][0], &updateBoard[0][0]+numRows*numCols, &original[0][0]);
+            int next[numUpdateRows][numCols];
+            copy(&next[0][0], &next[0][0]+numRows*numCols, &updateBoard[0][0]);
 
-            for (int row = 0; row < numUpdateRows; row++) {
-                for (int col = 0; col < numCols; col++) {
-                    int count = 0;
-                    vector<int> deltas {-1, 0, 1};
-                    for (int dc : deltas) {
-                        for (int dr : deltas) {
-                            if (dr || dc) {
-                                int neighbor;
-                                if(row + dr < 0 || row +dr >= numRows || col+dc < 0 || col+dc >= numCols) {
-                                    neighbor = 0;
-                                }else{
-                                    neighbor = updateBoard[row][col];
-                                }
-                                count += neighbor;
-                                //count += getNeighbor(row + dr, col + dc, board);
-                            }
-                        }
-                    }
-//                    return count;
-//                    int count = getCount(row, col, board);
-                    //cout << rank << " " << count << " " << row << " " << col<< endl;
-                    bool birth = !board[row][col] && count == 3;
-                    bool survive = board[row][col] && (count == 2 || count == 3);
-                    updateBoard[row][col] = birth || survive;
+            for(int i=1;i<numUpdateRows-1;++i){
+                for(int j=1;j<numCols-1;++j){
+
+                    int sum;
+                    sum = updateBoard[i-1][j-1]+ updateBoard[i  ][j-1]+ updateBoard[i+1][j-1]+ updateBoard[i-1][j+1]+ updateBoard[i  ][j+1]+ updateBoard[i+1][j+1]+ updateBoard[i-1][j]+ updateBoard[i+1][j];
+
+                    if(updateBoard[i][j]==0&&sum==3){next[i][j]=1;continue;}
+                    if(updateBoard[i][j]==0&&sum!=3){next[i][j]=0;continue;}
+                    if(sum<2){next[i][j]=0;continue;}
+                    if(sum>3){next[i][j]=0;continue;}
+                    next[i][j]=1;
+
                 }
+
+            }
+
+            //cout << "Printing updateBoard for " << rank << " at gen " << gen<< endl;
+            for(int i=0;i<numUpdateRows;++i){
+                for(int j=0;j<numCols;++j){
+                    updateBoard[i][j]=next[i][j];
+                    //cout << updateBoard[i][j] << " ";
+                }
+                //cout << endl;
             }
 
 
-            int startIndex = 0;
+//            int startIndex = 0;
             int endIndex = numUpdateRows;
-            if(!rank){
-                startIndex = 1;
-            }
+//            if(!rank){
+//                startIndex = 1;
+//            }
             if(rank == size -2){
                 endIndex = numUpdateRows-1;
             }
-            for(int i = startIndex; i < endIndex; i++){
+            for(int i = 0; i < endIndex; i++){
                 for(int j = 0; j < numCols ; j++) {
                     if(!rank){
                         section[i][j] = updateBoard[i][j];
