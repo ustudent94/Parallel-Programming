@@ -232,19 +232,19 @@ int main(int argc, char **argv) {
 //        cout << rank << " 2 " <<(rank/(numRows%(size-1)))*-1 + 1 <<endl;
         //const int numParts = numRows/(size-1) + (rank/(numRows%(size-1)))*-1 + 1;
         int sectionSize = numRows / (size - 1);
-        int numExtra = 2;
+        //int numExtra = 2;
 
         //account for smaller last section
         if(rank == size -2) {
             sectionSize = numRows - rank *sectionSize;
-            numExtra = 1;
+            //numExtra = 1;
         }else if(!rank){
-            numExtra = 1;
+            //numExtra = 1;
         }
 
         const int numSectionRows = sectionSize;
-        const int numUpdateRows = sectionSize + numExtra;
-        //cout << rank << " " << numParts << endl;
+//        const int numUpdateRows = sectionSize + numExtra;
+        const int numUpdateRows = sectionSize + 2;
         int section[numSectionRows][numCols];
         int updateBoard[numUpdateRows][numCols];
         int rowList[numSectionRows];
@@ -252,29 +252,37 @@ int main(int argc, char **argv) {
 
         for(int i = 0; i < numCols; i++){
             tempRow[i]=0;
+            updateBoard[0][i] = 0;
+            updateBoard[numUpdateRows-1][i] = 0;
         }
-
-        cout << "For rank " << rank<< endl;
+        cout << rank << " and stuff"<< endl;
         for(int i = 0; i < numSectionRows; i++){
-            //cout <<rank << " recieving " << i << " " << endl;
 
             MPI_Recv(tempRow,numCols,MPI_INT,MPI_ANY_SOURCE,MPI_ANY_TAG,MCW,&mystatus);
-//            cout << oRank << " " << rank<< " Size: " << size<< " " <<  i <<endl;
             tag = mystatus.MPI_TAG;
-            //cout <<rank << " " << tag << " " << endl;
             rowList[i] = tag;
+
+
             for(int j= 0; j < numCols; j++){
-                section[tag][j] = tempRow[j];
-                if(rank != 0){
-                    updateBoard[tag][j] = tempRow[j];
-                }else{
-                    updateBoard[tag+1][j] = tempRow[j];
-                }
+                section[i][j] = tempRow[j];
+                updateBoard[i + 1][j] = tempRow[j];
+//                if(rank != 0){
+//                    updateBoard[tag][j] = tempRow[j];
+//                }else{
+//                    updateBoard[tag+1][j] = tempRow[j];
+//                }
                 //cout << updateBoard[tag][j] << " ";
                 //cout << tempRow[j];
             }
             //cout << endl;
         }
+
+
+
+//        MPI_Comm_rank(MCW, &rank);
+//        MPI_Comm_size(MCW, &size);
+
+        MPI_Barrier(MCW);
         cout << rank << " for gen " << endl;
         for(int i = 0; i < numUpdateRows; i++){
             for(int j= 0; j < numCols; j++){
@@ -283,30 +291,27 @@ int main(int argc, char **argv) {
             cout << endl;
         }
 
-//        MPI_Comm_rank(MCW, &rank);
-//        MPI_Comm_size(MCW, &size);
-
-        MPI_Barrier(MCW);
-
-
         //loop iterations
         for (int gen = 0; gen < numIter; gen++) {
 
-            //send below
+            //send top row to previous process
             if(rank >0){
-
+                for(int j = 0; j < numCols; j++){
+                    tempRow[j] = updateBoard[numUpdateRows-1];
+                }
                 process = rank -1;
                 //cout << rank << " " << process << " S1" << endl;
                 MPI_Send(tempRow, numCols, MPI_INT, process, 0, MCW);
             }
 
+            //recieve below
             if(rank < size-2){
                 source = rank +1;
                 //cout << rank << " " << source << " R1" << endl;
                 MPI_Recv(tempRow,numCols,MPI_INT,source,0,MCW,&mystatus);
-                for(int j = 0; j < numCols; j++){
-                    updateBoard[numSectionRows-1][j] = tempRow[j];
-                }
+            }
+            for(int j = 0; j < numCols; j++){
+                updateBoard[numSectionRows-1][j] = tempRow[j];
             }
 
 
@@ -320,9 +325,10 @@ int main(int argc, char **argv) {
                 source = rank - 1;
                 //cout << rank << " " << source << " R2" << endl;
                 MPI_Recv(tempRow,numCols,MPI_INT,source,1,MCW,&mystatus);
-                for(int j = 0; j < numCols; j++){
-                    updateBoard[0][j] = tempRow[j];
-                }
+
+            }
+            for(int j = 0; j < numCols; j++){
+                updateBoard[0][j] = tempRow[j];
             }
 
             ///Update the board
