@@ -149,7 +149,7 @@ int main(int argc, char **argv) {
 
 
     int tempRow[numCols];
-    int numIter = 2;
+    int numIter = 20;
 
 
     ///master
@@ -189,8 +189,8 @@ int main(int argc, char **argv) {
         //recieve each piece into ta
         for (int gen = 0; gen < numIter; gen++) {
             //automatically outputs board
-//            std::cout << "\ngeneration " << gen << ":\n";
-//            showGeneration(board);
+            std::cout << "\ngeneration " << gen << ":\n";
+            showGeneration(board);
 
             //recieve all rows from processes
             for(int i = 0; i < size -1; i++) {
@@ -219,8 +219,8 @@ int main(int argc, char **argv) {
             }
             MPI_Barrier(MCW);
         }
-//        std::cout << "\ngeneration " << numIter << ":\n";
-//        showGeneration(board);
+        std::cout << "\ngeneration " << numIter << ":\n";
+        showGeneration(board);
     }
 
 
@@ -255,7 +255,6 @@ int main(int argc, char **argv) {
             updateBoard[0][i] = 0;
             updateBoard[numUpdateRows-1][i] = 0;
         }
-        cout << rank << " and stuff"<< endl;
         for(int i = 0; i < numSectionRows; i++){
 
             MPI_Recv(tempRow,numCols,MPI_INT,MPI_ANY_SOURCE,MPI_ANY_TAG,MCW,&mystatus);
@@ -283,58 +282,97 @@ int main(int argc, char **argv) {
 //        MPI_Comm_size(MCW, &size);
 
         MPI_Barrier(MCW);
-        cout << rank << " for gen " << endl;
-        for(int i = 0; i < numUpdateRows; i++){
-            for(int j= 0; j < numCols; j++){
-                cout << updateBoard[i][j] << " ";
-            }
-            cout << endl;
-        }
+
 
         //loop iterations
         for (int gen = 0; gen < numIter; gen++) {
+            for(int i = 0; i < numCols; i++) {
+                tempRow[i] = 0;
+                updateBoard[0][i] = 0;
+            }
 
             //send top row to previous process
-            if(rank >0){
-                for(int j = 0; j < numCols; j++){
-                    tempRow[j] = updateBoard[numUpdateRows-1];
+            if( rank > 0) {
+                //cout << rank <<"S1 " << endl;
+                for (int j = 0; j < numCols; j++) {
+                    tempRow[j] = updateBoard[0][j];
+                    //cout << tempRow[j];
                 }
-                process = rank -1;
+                //cout << endl;
+                process = rank - 1;
                 //cout << rank << " " << process << " S1" << endl;
                 MPI_Send(tempRow, numCols, MPI_INT, process, 0, MCW);
             }
 
-            //recieve below
-            if(rank < size-2){
-                source = rank +1;
+            //recieve into bottom row from next proceess
+            if(rank < size -2) {
+                source = rank + 1;
                 //cout << rank << " " << source << " R1" << endl;
-                MPI_Recv(tempRow,numCols,MPI_INT,source,0,MCW,&mystatus);
+                //cout << rank <<"R1 " << endl;
+                //MPI_Recv(tempRow, numCols, MPI_INT, source, 0, MCW, &mystatus);
+                for (int j = 0; j < numCols; j++) {
+                    updateBoard[numUpdateRows - 1][j] = tempRow[j];
+                    //cout <<updateBoard[numUpdateRows - 1][j];
+                }
+                //cout <<endl;
             }
-            for(int j = 0; j < numCols; j++){
-                updateBoard[numSectionRows-1][j] = tempRow[j];
+
+            for(int i = 0; i < numCols; i++) {
+                tempRow[i] = 0;
+                updateBoard[numUpdateRows -1][i] = 0;
             }
 
 
-            if(rank < size-2){
-                process = rank+1;
+            //send bottom row to next process
+            if(rank < size -2) {
+                //cout << rank <<"S2 " << endl;
+                for (int j = 0; j < numCols; j++) {
+                    tempRow[j] = updateBoard[numUpdateRows - 1][j];
+                    //cout << tempRow[j];
+                }
+                //cout << endl;
+                process = rank + 1;
                 //cout << rank << " " << process << " S2" << endl;
-                MPI_Send(tempRow, numCols, MPI_INT, process, 1, MCW);
+                MPI_Send(tempRow, numCols, MPI_INT, process, 0, MCW);
             }
 
+            //recieve into top row from previous process
             if(rank >0){
                 source = rank - 1;
                 //cout << rank << " " << source << " R2" << endl;
-                MPI_Recv(tempRow,numCols,MPI_INT,source,1,MCW,&mystatus);
+                //cout << rank <<"R2 " << endl;
+                MPI_Recv(tempRow,numCols,MPI_INT,source,0,MCW,&mystatus);
+                for(int j = 0; j < numCols; j++){
+                    updateBoard[0][j] = tempRow[j];
+                    //cout <<updateBoard[0][j];
+                }
+                //cout << endl;
+            }
+//            sleep(rank);
+//            cout << rank << " for gen " << gen <<endl;
+//            for(int i = 0; i < numUpdateRows; i++){
+//                for(int j= 0; j < numCols; j++){
+//                    cout << updateBoard[i][j] << " ";
+//                }
+//                cout << endl;
+//            }
 
-            }
-            for(int j = 0; j < numCols; j++){
-                updateBoard[0][j] = tempRow[j];
-            }
 
             ///Update the board
             //updateSection(updateBoard, numUpdateRows);
             int next[numUpdateRows][numCols];
-            copy(&next[0][0], &next[0][0]+numRows*numCols, &updateBoard[0][0]);
+//            copy(&next[0][0], &next[0][0]+numRows*numCols, &updateBoard[0][0]);
+
+            //sleep(rank);
+            //cout << rank << " for gen " << gen <<endl;
+            for(int i=0;i<numUpdateRows;++i){
+                for(int j=0;j<numCols;++j){
+                    next[i][j]= updateBoard[i][j];
+                    //cout << updateBoard[i][j] << " ";
+                }
+                //cout << endl;
+            }
+
 
             for(int i=1;i<numUpdateRows-1;++i){
                 for(int j=1;j<numCols-1;++j){
@@ -353,10 +391,12 @@ int main(int argc, char **argv) {
             }
 
             //cout << "Printing updateBoard for " << rank << " at gen " << gen<< endl;
+//            sleep(rank);
+            //cout << rank << " for gen " << gen <<endl;
             for(int i=0;i<numUpdateRows;++i){
                 for(int j=0;j<numCols;++j){
                     updateBoard[i][j]=next[i][j];
-                    //cout << updateBoard[i][j] << " ";
+                    //cout << next[i][j] << " ";
                 }
                 //cout << endl;
             }
