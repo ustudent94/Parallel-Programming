@@ -159,7 +159,7 @@ int main(int argc, char **argv) {
 
 
     int tempRow[numCols];
-    int numIter = 2;
+    int numIter = 220;
 
 
     ///master
@@ -403,21 +403,9 @@ int main(int argc, char **argv) {
             }
 
 
-//            int startIndex = 0;
-            int endIndex = numUpdateRows;
-//            if(!rank){
-//                startIndex = 1;
-//            }
-            if(rank == size -2){
-                endIndex = numUpdateRows-1;
-            }
-            for(int i = 0; i < endIndex; i++){
+            for(int i = 0; i < numSectionRows; i++){
                 for(int j = 0; j < numCols ; j++) {
-                    if(!rank){
-                        section[i][j] = updateBoard[i][j];
-                    }else {
-                        section[i][j] = updateBoard[i+1][j];
-                    }
+                    section[i][j] = updateBoard[i+1][j];
                 }
             }
             //cout << rank << " " << size-1 << endl;
