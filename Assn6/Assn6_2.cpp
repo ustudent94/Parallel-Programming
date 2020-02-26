@@ -46,9 +46,9 @@ int numRows = 40;
 int numCols = 80;
 
 ///Initial state
-int numRows = 40;
-int numCols = 40;
-Cells board = {};
+//int numRows = 40;
+//int numCols = 40;
+//Cells board = {};
 
  
 // ----------------------------------------------------------------------------
