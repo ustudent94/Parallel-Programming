@@ -15,32 +15,6 @@ const int numCols = 80;
 using namespace std;
 // ----------------------------------------------------------------------------
 
-//using Row   = std::vector<int>;
-//using Cells = std::vector<Row>;
-
-
-int getNeighbor(int row, int col, int board[numRows][numCols]) {
-    // use modulus to get wrapping effect at board edges
-    if(row < 0 || row >= numRows || col < 0 || col >= numCols) {
-        return 0;
-    }else{
-        return board[row][col];
-    }
-}
-
-int getCount(int row, int col, int board[numRows][numCols]) {
-    int count = 0;
-    vector<int> deltas {-1, 0, 1};
-    for (int dc : deltas) {
-        for (int dr : deltas) {
-            if (dr || dc) {
-                count += getNeighbor(row + dr, col + dc, board);
-            }
-        }
-    }
-    return count;
-}
-
 void showGeneration(int board[numRows][numCols]) {
     for(int i =0; i <numRows; i++) {
         cout << "|";
@@ -51,59 +25,12 @@ void showGeneration(int board[numRows][numCols]) {
     }
 }
 
-int tick(int board[numRows][numCols], int row, int col) {
-    int count = getCount(row, col, board);
-    bool birth = !board[row][col] && count == 3;
-    bool survive = board[row][col] && (count == 2 || count == 3);
-    return birth || survive;
-}
-
-void updateCells(int board[numRows][numCols]) {
-    int original[numRows][numCols];
-    //copyArray(board,original);
-    copy(&board[0][0], &board[0][0]+numRows*numCols, &original[0][0]);
-
-    for (int row = 0; row < numRows; row++) {
-        for (int col = 0; col < numCols; col++) {
-            board[row][col] = tick(original, row, col);
-        }
-    }
-}
-
-void updateSmall(int **board,int smallRows) {
-    const int numSmallRows = smallRows;
-    int original[numSmallRows][numCols];
-    //copyArray(board,original);
-    copy(&board[0][0], &board[0][0]+numRows*numCols, &original[0][0]);
-
-    for (int row = 0; row < 3; row++) {
-        for (int col = 0; col < numCols; col++) {
-            board[row][col] = tick(original, row, col);
-        }
-    }
-}
-
-void copyArray(int copy[numRows][numCols], int **paste){
-    for(int i = 0; i < numRows; i++ ){
-        for(int j = 0; j < numCols; j++){
-            paste[i][j] = copy[i][j];
-        }
-    }
-}
-
 void clearRow(int *row){
     for(int i = 0; i < numCols; i++){
         row[i] = 0;
     }
 }
 
-void clearTempBoard(int **board){
-    for(int i = 0; i < 3; i++){
-        for(int j = 0; j < numCols; j++) {
-            board[i][j] = 0;
-        }
-    }
-}
 
 int main(int argc, char **argv) {
     int rank, size, tag, source, process;
