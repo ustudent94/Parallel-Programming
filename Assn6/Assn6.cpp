@@ -7,10 +7,8 @@
 
 
 #define MCW MPI_COMM_WORLD
-const int numRows = 20;
-const int numCols = 20;
-//const int numRows = 10;
-//const int numCols = 10;
+const int numRows = 38;
+const int numCols = 38;
 
 using namespace std;
 // ----------------------------------------------------------------------------
@@ -96,11 +94,11 @@ int main(int argc, char **argv) {
 
         ///Initial state
         int board[numRows][numCols];
+
         int seed;
         for(int i = 0; i < numRows; i++){
             clearRow(tempRow);
             for(int j = 0; j < numCols; j++){
-                //todo: uncomment when finished debugging
                 seed = i*j;
                 if(rand()%5 == 0){
                     board[i][j] = 1;
@@ -110,10 +108,20 @@ int main(int argc, char **argv) {
                 tempRow[j] = board[i][j];
             }
 
+            double decDivder = numIter/(size-1);
+            int divider = decDivder;
+            process = i/divider;
 
-            process = i/(numRows/(size-1));
+
+            if(rank == size-2){
+                process = size-2;
+            }
+
+            if(process >= size-2){
+                process = size-2;
+            }
+            //cout << rank << " Sending to " << process << " "<<divider << " "<<decDivder <<" " <<i << endl<< endl;
             MPI_Send(tempRow,numCols,MPI_INT,process,i,MCW);
-
         }
         //finalize reception by changing tag
         //MPI_Send(tempRow,numCols,MPI_INT,process,size +1,MCW);
@@ -127,7 +135,6 @@ int main(int argc, char **argv) {
 
             //recieve all rows from processes
             for(int i = 0; i < size -1; i++) {
-                //todo: probe and receive count
                 MPI_Probe(MPI_ANY_SOURCE,0,MCW,&mystatus);
                 int count;
                 MPI_Get_count(&mystatus,MPI_INT,&count);
@@ -157,13 +164,17 @@ int main(int argc, char **argv) {
 
     ///slave
     else {
-        int sectionSize = numRows / (size - 1);
+        double decDivder = numIter/(size-1);
+        int divider = decDivder;;
+        int sectionSize = decDivder;
+        //cout << rank << " " << inter<< " " << size <<endl ;
+
 
         //account for smaller last section
-        if(rank == size -2) {
+        if(rank >= size -2) {
             sectionSize = numRows - rank *sectionSize;
         }
-
+        //cout << rank << " " << sectionSize << endl;
         const int numSectionRows = sectionSize;
         const int numUpdateRows = sectionSize + 2;
 
@@ -255,15 +266,6 @@ int main(int argc, char **argv) {
                 }
                 //cout << endl;
             }
-
-//            sleep(rank);
-//            cout << rank << " for gen " << gen <<endl;
-//            for(int i = 0; i < numUpdateRows; i++){
-//                for(int j= 0; j < numCols; j++){
-//                    cout << updateBoard[i][j] << " ";
-//                }
-//                cout << endl;
-//            }
 
 
             ///Update the temporary board
