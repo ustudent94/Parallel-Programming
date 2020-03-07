@@ -29,8 +29,12 @@ int main(int argc, char **argv) {
     bool processWhite = true;
     bool sendToken = false;
     int token =0;
-
     int numIter;
+
+    double startTime = MPI_Wtime();
+    double time;
+    int numTasksPerformed = 0;
+
 
 
 
@@ -91,8 +95,9 @@ int main(int argc, char **argv) {
             }
         }
 
-        //do work
+        ///do work
         if(queue.size() > 0){
+            numTasksPerformed++;
             int task = queue.back();
             queue.pop_back();
             numIter = task * task;
@@ -101,7 +106,7 @@ int main(int argc, char **argv) {
             }
         }
 
-        //add new tasks
+        ///add new tasks
         int numNew = (rand()%2) +1;
         int counter = 0;
         while (taskNum < maxTask && counter < numNew){
@@ -111,6 +116,7 @@ int main(int argc, char **argv) {
             counter++;
             if(taskNum>= maxTask){
                 cout << rank << " is done generating tasks " << endl;
+                time = MPI_Wtime() - startTime;
             }
             if(taskNum>= maxTask && rank == 0){
                 cout << rank << " sending token around" << endl;
@@ -131,7 +137,9 @@ int main(int argc, char **argv) {
             token = 0;
         }
     }
-
+    MPI_Barrier(MCW);
+    sleep(2);
+    cout << rank  << " generated " << maxTask << " in " << time << " seconds and performed work on " << numTasksPerformed << endl;
 
 
 
