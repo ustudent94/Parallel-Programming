@@ -12,7 +12,7 @@ using namespace std;
 int main(int argc, char **argv) {
 
     int rank, size, process,source, tag, flag;
-    int tasks;
+    int task;
     MPI_Status mystatus;
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MCW, &rank);
@@ -24,28 +24,14 @@ int main(int argc, char **argv) {
     srand(rank);
     vector<int> queue;
     int taskNum = 0;
-    //todo: change to random amount of work
-    int maxTask = 100;
-//    int maxTask = (rand() % 1024) + 1024
-    bool processWhite = true;\
+//    int maxTask = 100;
+    int maxTask = (rand() % 1024) + 1024;
+    bool processWhite = true;
     bool sendToken = false;
     int token =0;
-    //token 0 = no token, 1 = white, 2 = black
+
     int numIter;
 
-
-
-//    taskNum = maxTask;
-    ///kickoff
-    if(!rank){
-        //this is to initiate process only
-        tasks = taskNum;
-//        tasks = -2;
-        cout << "Initializing work at process 0 starting with task " << taskNum << endl;
-        MPI_Send(&tasks, 1, MPI_INT, 0, 0, MCW);
-//        MPI_Send(&tasks, 1, MPI_INT, 1, 1, MCW);
-        token = 0;
-    }
 
 
     while(1){
@@ -83,9 +69,9 @@ int main(int argc, char **argv) {
 
         //recieve message if message waiting
         if(tag == 0 && flag) {
-            MPI_Recv(&tasks, 1, MPI_INT, MPI_ANY_SOURCE, 0, MCW, &mystatus);
-//            cout << rank << " received " << tasks << " task from " << source << endl;
-            queue.push_back(tasks);
+            MPI_Recv(&task, 1, MPI_INT, MPI_ANY_SOURCE, 0, MCW, &mystatus);
+            cout << rank << " received " << task << " task from " << source << endl;
+            queue.push_back(task);
         }
 
 
@@ -94,14 +80,14 @@ int main(int argc, char **argv) {
 
             for(int i = 0; i < 2; i++){
                 process = rand() %size;
-                tasks = queue.back();
+                task = queue.back();
                 queue.pop_back();
 
                 if(process < rank){
                     processWhite = false;
                 }
-//                cout << rank << " has " << queue.size() << " elements in queue. Sending to process " <<process << endl;
-                MPI_Send(&tasks, 1, MPI_INT, process, 0, MCW);
+                cout << rank << " has " << queue.size() << " elements in queue. Sending to process " <<process << endl;
+                MPI_Send(&task, 1, MPI_INT, process, 0, MCW);
             }
         }
 
@@ -120,7 +106,7 @@ int main(int argc, char **argv) {
         int counter = 0;
         while (taskNum < maxTask && counter < numNew){
             taskNum++;
-//            cout << rank << " added " << taskNum << " to the queue " << endl;
+            cout << rank << " added " << taskNum << " to the queue " << endl;
             queue.push_back(taskNum);
             counter++;
             if(taskNum>= maxTask){
