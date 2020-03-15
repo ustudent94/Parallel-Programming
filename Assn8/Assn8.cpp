@@ -33,6 +33,15 @@ Point points[numPoints] = {
     {5,2},
 };
 
+void printPath(double dist,int path[numPoints]){
+    cout << dist <<": ";
+    for(int i = 0; i < numPoints; i++){
+        cout << path[i] << " ";
+    }
+    cout <<endl;
+}
+
+
 double DBP(Point a, Point b){
     return sqrt((b.x - a.x)*(b.x - a.x)+(b.y - a.y)*(b.y - a.y));
 }
@@ -49,7 +58,7 @@ void randPath(int path[numPoints]){
         path[swapIndex] = path[i];
         path[i] = temp;
     }
-
+//    printPath(0,path);
 }
 
 double fitness(int path[numPoints]){
@@ -57,7 +66,10 @@ double fitness(int path[numPoints]){
     for(int i = 0; i < numPoints-1; i++){
         Point first = points[path[i]];
         Point second = points[path[i+1]];
-        distance += DBP(first,second);
+        double addDist = DBP(first,second);
+//        cout << "a.x: " << first.x << " a.y: " << first.y << " b.x: " << second.x << " b.y: " << second.y << " dist: " << addDist << endl;
+        distance += addDist;
+
     }
     return  distance;
 }
@@ -101,9 +113,10 @@ void SR(int path[numPoints]){
 
 void PMX(int path[numPoints], int newPath[numPoints], bool mutation){
     randPath(newPath);
+
     int start = rand() % numPoints;
     int end = rand() % numPoints;
-    cout << start << " " << end << endl;
+//    cout << start << " " << end << endl;
     int curIndex = start;
     int curNum;
     int swapIndex;
@@ -133,13 +146,12 @@ void PMX(int path[numPoints], int newPath[numPoints], bool mutation){
     }
 }
 
-void printPath(double dist,int path[numPoints]){
-    cout << dist <<": ";
+void copyPath(int paste[numPoints], int copy[numPoints]){
     for(int i = 0; i < numPoints; i++){
-        cout << path[i] << " ";
+        paste[i] = copy[i];
     }
-    cout <<endl;
 }
+
 
 
 int main(int argc, char **argv) {
@@ -154,7 +166,6 @@ int main(int argc, char **argv) {
 //    MPI_Send(task,1,MPI_INT,process,0,MCW);
 //    MPI_Recv(task,1,MPI_INT,MPI_ANY_SOURCE,MPI_ANY_TAG,MCW,&mystatus);
 
-
     bool mutation = false;
     bool chooseWorse = false;
 
@@ -168,9 +179,14 @@ int main(int argc, char **argv) {
 
     randPath(curPath);
 //    bestPath = curPath;
-    std::copy(begin(bestPath),end(bestPath),begin(curPath));
+//    printPath(0, curPath);
+//    std::copy(std::begin(bestPath),std::end(bestPath),std::begin(curPath));
+    copyPath(bestPath,curPath);
     bestDist = fitness(curPath);
+
     curDist = bestDist;
+    printPath(bestDist,bestPath);
+    printPath(curDist,curPath);
 
     int lessDist[numPoints];
     int moreDist[numPoints];
@@ -179,24 +195,29 @@ int main(int argc, char **argv) {
     double startTime = MPI_Wtime();
     double curTime = MPI_Wtime() - startTime;
     while(curTime < maxTime){
-        mutation = (rand() % numPoints/5) == 0;
+
+        mutation = (rand() % (numPoints/5)) == 0;
         PMX(curPath,nextPath,mutation);
-        chance = curTime/numPoints;
+
+        chance = (curTime/numPoints) + 1;
         nextDist = fitness(nextPath);
 
-        cout << "made it here" << endl;
+
+
         if(curDist < bestDist){
 //            bestPath = curPath;
-            std::copy(begin(bestPath),end(bestPath),begin(curPath));
+//            std::copy(begin(bestPath),end(bestPath),begin(curPath));
+            copyPath(bestPath, curPath);
+            bestDist = curDist;
         }
-
+//        cout << chance << endl;
         chooseWorse = (rand()%chance) ==0;
         if((!chooseWorse && nextDist < curDist) || (chooseWorse && curDist < nextDist)){
 //            curPath = nextPath;
-            std::copy(begin(curPath),end(curPath),begin(nextPath));
+//            std::copy(begin(curPath),end(curPath),begin(nextPath));
+            copyPath(curPath,nextPath);
             curDist = nextDist;
         }
-
         //display chosen distance and path
         printPath(curDist,curPath);
 
