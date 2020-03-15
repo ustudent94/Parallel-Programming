@@ -35,7 +35,44 @@ void randPath(int path[numPoints]){
 
 }
 
-void PMX(int path[numPoints], int newPath[numPoints]){
+void SR(int path[numPoints]){
+    int start = rand() % numPoints;
+    int end = rand() % numPoints;
+    int numSub = end -start;
+    if(numSub <0){
+        numSub = numPoints-1+numSub;
+    }
+    const int numReverse = numSub;
+    cout << numReverse << endl;
+    int reversal[numReverse];
+    int curIndex = start;
+    //get subsection
+    for(int i = 0; i < numReverse; i++) {
+        reversal[i] = path[curIndex];
+        curIndex = (curIndex +1)%numPoints;
+    }
+
+    int frontInd = 0;
+    int backInd = numReverse;
+    //reverse subsection
+    while(frontInd < backInd){
+        int temp = reversal[frontInd];
+        reversal[frontInd] = reversal[backInd];
+        reversal[backInd] = temp;
+        frontInd++;
+        backInd--;
+    }
+
+    //reinsert subsection
+    curIndex = start;
+    for(int i = 0; i < numReverse; i++) {
+        path[curIndex] = reversal[curIndex];
+        curIndex = (curIndex +1)%numPoints;
+    }
+
+}
+
+void PMX(int path[numPoints], int newPath[numPoints], bool mutation){
     randPath(newPath);
     int start = rand() % numPoints;
     int end = rand() % numPoints;
