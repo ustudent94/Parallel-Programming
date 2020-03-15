@@ -9,11 +9,28 @@
 
 using namespace std;
 
-const int numPoints = 10;
+const int numPoints = 8;
+
 
 struct Point {
-    double x;
-    double y;
+
+    int x;
+    int y;
+    Point(int a, int b){
+        x = a;
+        y = b;
+    }
+};
+
+Point points[numPoints] = {
+    {0,0},
+    {0,10},
+    {10,10},
+    {10,0},
+    {2,2},
+    {2,5},
+    {5,5},
+    {5,2},
 };
 
 double DBP(Point a, Point b){
@@ -33,6 +50,16 @@ void randPath(int path[numPoints]){
         path[i] = temp;
     }
 
+}
+
+double fitness(int path[numPoints]){
+    double distance = 0;
+    for(int i = 0; i < numPoints-1; i++){
+        Point first = points[path[i]];
+        Point second = points[path[i+1]];
+        distance += DBP(first,second);
+    }
+    return  distance;
 }
 
 void SR(int path[numPoints]){
@@ -106,6 +133,14 @@ void PMX(int path[numPoints], int newPath[numPoints], bool mutation){
     }
 }
 
+void printPath(double dist,int path[numPoints]){
+    cout << dist <<": ";
+    for(int i = 0; i < numPoints; i++){
+        cout << path[i] << " ";
+    }
+    cout <<endl;
+}
+
 
 int main(int argc, char **argv) {
 
@@ -119,20 +154,57 @@ int main(int argc, char **argv) {
 //    MPI_Send(task,1,MPI_INT,process,0,MCW);
 //    MPI_Recv(task,1,MPI_INT,MPI_ANY_SOURCE,MPI_ANY_TAG,MCW,&mystatus);
 
-    int path[numPoints];
-    randPath(path);
-    for(int i = 0; i < numPoints;i++){
-        cout << path[i] << " ";
-    }
-    cout << endl;
 
-    int newPath[numPoints];
-    PMX(path,newPath);
-    for(int i = 0; i < numPoints;i++){
-        cout << newPath[i] << " ";
-    }
-    cout << endl;
+    bool mutation = false;
+    bool chooseWorse = false;
 
+    int chance;
+    int bestPath[numPoints];
+    double bestDist;
+    int curPath[numPoints];
+    double curDist;
+    int nextPath[numPoints];
+    double nextDist;
+
+    randPath(curPath);
+//    bestPath = curPath;
+    std::copy(begin(bestPath),end(bestPath),begin(curPath));
+    bestDist = fitness(curPath);
+    curDist = bestDist;
+
+    int lessDist[numPoints];
+    int moreDist[numPoints];
+
+    double maxTime = 10;
+    double startTime = MPI_Wtime();
+    double curTime = MPI_Wtime() - startTime;
+    while(curTime < maxTime){
+        mutation = (rand() % numPoints/5) == 0;
+        PMX(curPath,nextPath,mutation);
+        chance = curTime/numPoints;
+        nextDist = fitness(nextPath);
+
+        cout << "made it here" << endl;
+        if(curDist < bestDist){
+//            bestPath = curPath;
+            std::copy(begin(bestPath),end(bestPath),begin(curPath));
+        }
+
+        chooseWorse = (rand()%chance) ==0;
+        if((!chooseWorse && nextDist < curDist) || (chooseWorse && curDist < nextDist)){
+//            curPath = nextPath;
+            std::copy(begin(curPath),end(curPath),begin(nextPath));
+            curDist = nextDist;
+        }
+
+        //display chosen distance and path
+        printPath(curDist,curPath);
+
+        curTime = MPI_Wtime() - startTime;
+    }
+
+    cout << "The best path is the following" << endl;
+    printPath(bestDist,bestPath);
 
 
 
