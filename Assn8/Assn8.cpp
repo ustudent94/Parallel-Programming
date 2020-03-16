@@ -9,7 +9,7 @@
 
 using namespace std;
 
-const int numPoints = 10;
+const int numPoints = 9;
 
 
 struct Point {
@@ -43,7 +43,7 @@ Point points[numPoints] = {
         {410640, 846947},
         {287850, 600161},
         {270030, 494359},
-        {559020, 199445},
+//        {559020, 199445},
 //        {353930, 542989},
 //        {515920, 497472},
 //        {648080, 470280},
@@ -271,6 +271,7 @@ int main(int argc, char **argv) {
 
     bool mutation = false;
     bool chooseWorse = false;
+    srand(rank);
 
     int chance;
     int bestPath[numPoints];
@@ -281,48 +282,58 @@ int main(int argc, char **argv) {
     unsigned long long nextDist;
 
     randPath(curPath);
-//    bestPath = curPath;
-//    printPath(0, curPath);
-//    std::copy(std::begin(bestPath),std::end(bestPath),std::begin(curPath));
     copyPath(bestPath,curPath);
     bestDist = fitness(curPath);
 
     curDist = bestDist;
-    printPath(bestDist,bestPath);
-    printPath(curDist,curPath);
+//    printPath(bestDist,bestPath);
+//    printPath(curDist,curPath);
 
     int lessDist[numPoints];
     int moreDist[numPoints];
 
-    double maxTime = 10;
+    double maxTime = 1;
     double startTime = MPI_Wtime();
     double curTime = MPI_Wtime() - startTime;
     while(curTime < maxTime){
+        MPI_Iprobe(MPI_ANY_SOURCE,MPI_ANY_TAG,MCW,&flag,&mystatus);
+        //if there is a message to recieve recieve in as next path otherwise generate new nextPath
+        if(flag) {
+            MPI_Recv(nextPath,numPoints,MPI_INT,MPI_ANY_SOURCE,MPI_ANY_TAG,MCW,&mystatus);
+        }else {
+            mutation = (rand() % (numPoints / 5)) == 0;
 
-        mutation = (rand() % (numPoints/5)) == 0;
-        PMX(curPath,nextPath,mutation);
+            PMX(curPath, nextPath, mutation);
+            if (mutation) {
+                //send if mutation occurs
+                process = rand() % size;
+                MPI_Send(nextPath, numPoints, MPI_INT, process, 0, MCW);
+
+            }
+        }
+
 
         chance = (curTime/numPoints) + 1;
         nextDist = fitness(nextPath);
 
-
+        if(mutation){
+            cout << "A mutation has occurred. Sending to process "<< process << endl;
+            printPath(curDist,curPath);
+            printPath(nextDist,nextPath);
+        }
 
         if(curDist < bestDist){
-//            bestPath = curPath;
-//            std::copy(begin(bestPath),end(bestPath),begin(curPath));
+
             copyPath(bestPath, curPath);
             bestDist = curDist;
         }
-//        cout << chance << endl;
         chooseWorse = (rand()%chance) ==0;
         if((!chooseWorse && nextDist < curDist) || (chooseWorse && curDist < nextDist)){
-//            curPath = nextPath;
-//            std::copy(begin(curPath),end(curPath),begin(nextPath));
             copyPath(curPath,nextPath);
             curDist = nextDist;
         }
         //display chosen distance and path
-        printPath(curDist,curPath);
+//        printPath(curDist,curPath);
 
         curTime = MPI_Wtime() - startTime;
     }
